@@ -384,6 +384,25 @@ if host_platform == 'windows'
 			endif
 		endforeach
 	endif
+	if host_libc == 'mingw'
+		foreach dll_name : [
+			'libgcc_s_seh-1.dll',
+			'libstdc++-6.dll',
+			'libwinpthread-1.dll',
+		]
+			dll_input = run_command(
+				python3_prog,
+				'-c',
+				'import os, sys; name = sys.argv[1]; print(next((os.path.abspath(os.path.join(d, name)) for d in os.environ.get("PATH", "").split(os.pathsep) if os.path.isfile(os.path.join(d, name))), ""))',
+				dll_name,
+				check: true,
+			).stdout().strip()
+			if dll_input == ''
+				error('failed to locate mingw runtime DLL ' + dll_name)
+			endif
+			copied_dlls += [ fs.copyfile(dll_input, dll_name) ]
+		endforeach
+	endif
 	if host_libc == 'msvc'
 		if tpt_libs_static == 'static'
 			target_options += [ 'b_vscrt=static_from_buildtype' ]
