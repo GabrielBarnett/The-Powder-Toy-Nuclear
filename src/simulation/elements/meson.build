@@ -207,6 +207,11 @@ simulation_elem_names = [
 	'PABS',
 	'PWAL',
 	'PDRV',
+	'HRAY',
+	'XRAY',
+	'RADS',
+	'IONZ',
+	'RMTR',
 ]
 
 simulation_elem_src = []

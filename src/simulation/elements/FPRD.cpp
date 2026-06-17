@@ -54,12 +54,25 @@ void Element::Element_FPRD()
 static int update(UPDATE_FUNC_ARGS)
 {
 	parts[i].temp = restrict_flt(parts[i].temp - FissStage1::FPRD_COOLING_RATE, MIN_TEMP, MAX_TEMP);
+	if (sim->rng.chance(FissStage1::FPRD_XRAY_EMISSION_CHANCE, 10000))
+		FissStage1::TryCreateXRAY(sim, x, y, 1);
 	if (sim->rng.chance(FissStage1::FPRD_NEUTRON_EMISSION_CHANCE, 10000))
 		FissStage1::TryCreateNTRN(sim, x, y, 1);
-	if (parts[i].life <= FissStage1::FPRD_DECAY_TIME)
+	if (sim->rng.chance(FissStage1::FPRD_RADS_DECAY_CHANCE, 10000))
+		FissStage1::TryCreateRADS(sim, x, y, 1);
+	if (parts[i].life <= FissStage1::FPRD_TO_ASH_TIME)
 	{
-		sim->part_change_type(i, x, y, PT_STNE);
-		parts[i].temp = restrict_flt(R_TEMP + 273.15f, MIN_TEMP, MAX_TEMP);
+		if (sim->rng.chance(FissStage1::FPRD_TO_RADS_CHANCE, 10000))
+		{
+			sim->part_change_type(i, x, y, PT_RADS);
+			parts[i].life = FissStage1::RADS_START_LIFE;
+			parts[i].temp = restrict_flt(FissStage1::RADS_START_TEMP, MIN_TEMP, MAX_TEMP);
+		}
+		else
+		{
+			sim->part_change_type(i, x, y, PT_STNE);
+			parts[i].temp = restrict_flt(R_TEMP + 273.15f, MIN_TEMP, MAX_TEMP);
+		}
 		return 1;
 	}
 	return 0;

@@ -1,4 +1,5 @@
 #include "simulation/ElementCommon.h"
+#include "simulation/SimulationData.h"
 #include "FISS.h"
 
 static int update(UPDATE_FUNC_ARGS);
@@ -15,6 +16,12 @@ namespace
 		int shokCreated = 0;
 		int compressedFissCount = 0;
 		int activeFissCount = 0;
+		int hrayCreated = 0;
+		int xrayCreated = 0;
+		int radsCreated = 0;
+		int ionzCreated = 0;
+		int thermalFlashEvents = 0;
+		int radsEmissions = 0;
 	};
 
 	FrameCaps caps;
@@ -30,6 +37,12 @@ namespace
 			caps.shokCreated = 0;
 			caps.compressedFissCount = 0;
 			caps.activeFissCount = 0;
+			caps.hrayCreated = 0;
+			caps.xrayCreated = 0;
+			caps.radsCreated = 0;
+			caps.ionzCreated = 0;
+			caps.thermalFlashEvents = 0;
+			caps.radsEmissions = 0;
 		}
 		return caps;
 	}
@@ -46,6 +59,22 @@ namespace
 		part.vx = cosf(angle) * speed;
 		part.vy = sinf(angle) * speed;
 		part.life = sim->rng.between(FissStage1::NTRN_LIFE_MIN, FissStage1::NTRN_LIFE_MAX);
+	}
+
+	bool IsRadiationTransparent(int type)
+	{
+		if (!type)
+			return true;
+		auto &elements = SimulationData::CRef().elements;
+		return elements[type].Properties & (TYPE_GAS | TYPE_ENERGY);
+	}
+
+	void GiveStage3Velocity(Simulation *sim, Particle &part, int speedMin, int speedMax)
+	{
+		float angle = sim->rng.between(0, 359) * std::numbers::pi_v<float> / 180.0f;
+		float speed = float(sim->rng.between(speedMin * 100, speedMax * 100)) / 100.0f;
+		part.vx = cosf(angle) * speed;
+		part.vy = sinf(angle) * speed;
 	}
 }
 
@@ -251,6 +280,181 @@ namespace FissStage1
 		return false;
 	}
 
+	bool TryCreateHRAY(Simulation *sim, int x, int y, int radius)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.hrayCreated >= MAX_HRAY_CREATED_PER_FRAME)
+			return false;
+		for (int attempt = 0; attempt < 8; attempt++)
+		{
+			int nx = x + sim->rng.between(-radius, radius);
+			int ny = y + sim->rng.between(-radius, radius);
+			if (!InBounds(nx, ny))
+				continue;
+			int h = sim->create_part(-3, nx, ny, PT_HRAY);
+			if (h < 0)
+			{
+				if (sim->parts.MaxPartsReached())
+					break;
+				continue;
+			}
+			GiveStage3Velocity(sim, sim->parts[h], HRAY_SPEED_MIN, HRAY_SPEED_MAX);
+			sim->parts[h].life = sim->rng.between(HRAY_LIFE_MIN, HRAY_LIFE_MAX);
+			frameCaps.hrayCreated++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TryCreateXRAY(Simulation *sim, int x, int y, int radius)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.xrayCreated >= MAX_XRAY_CREATED_PER_FRAME)
+			return false;
+		for (int attempt = 0; attempt < 8; attempt++)
+		{
+			int nx = x + sim->rng.between(-radius, radius);
+			int ny = y + sim->rng.between(-radius, radius);
+			if (!InBounds(nx, ny))
+				continue;
+			int r = sim->create_part(-3, nx, ny, PT_XRAY);
+			if (r < 0)
+			{
+				if (sim->parts.MaxPartsReached())
+					break;
+				continue;
+			}
+			GiveStage3Velocity(sim, sim->parts[r], XRAY_SPEED_MIN, XRAY_SPEED_MAX);
+			sim->parts[r].life = sim->rng.between(XRAY_LIFE_MIN, XRAY_LIFE_MAX);
+			frameCaps.xrayCreated++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TryCreateRADS(Simulation *sim, int x, int y, int radius)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.radsCreated >= MAX_RADS_CREATED_PER_FRAME)
+			return false;
+		for (int attempt = 0; attempt < 8; attempt++)
+		{
+			int nx = x + sim->rng.between(-radius, radius);
+			int ny = y + sim->rng.between(-radius, radius);
+			if (!InBounds(nx, ny))
+				continue;
+			int r = sim->create_part(-3, nx, ny, PT_RADS);
+			if (r < 0)
+			{
+				if (sim->parts.MaxPartsReached())
+					break;
+				continue;
+			}
+			sim->parts[r].life = RADS_START_LIFE;
+			sim->parts[r].temp = restrict_flt(RADS_START_TEMP, MIN_TEMP, MAX_TEMP);
+			frameCaps.radsCreated++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TryCreateIONZ(Simulation *sim, int x, int y, int radius)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.ionzCreated >= MAX_IONZ_CREATED_PER_FRAME)
+			return false;
+		for (int attempt = 0; attempt < 8; attempt++)
+		{
+			int nx = x + sim->rng.between(-radius, radius);
+			int ny = y + sim->rng.between(-radius, radius);
+			if (!InBounds(nx, ny))
+				continue;
+			if (sim->pmap[ny][nx] && !IsRadiationTransparent(TYP(sim->pmap[ny][nx])))
+				continue;
+			int r = sim->create_part(-3, nx, ny, PT_IONZ);
+			if (r < 0)
+			{
+				if (sim->parts.MaxPartsReached())
+					break;
+				continue;
+			}
+			sim->parts[r].life = IONZ_LIFE;
+			sim->parts[r].temp = restrict_flt(IONZ_START_TEMP, MIN_TEMP, MAX_TEMP);
+			frameCaps.ionzCreated++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TryUseRadsEmissionSlot(Simulation *sim)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.radsEmissions >= MAX_RADS_EMISSIONS_PER_FRAME)
+			return false;
+		frameCaps.radsEmissions++;
+		return true;
+	}
+
+	void ApplyThermalFlash(Simulation *sim, int x, int y, int radius, float intensity)
+	{
+		if (!THERMAL_FLASH_ENABLED)
+			return;
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.thermalFlashEvents >= MAX_THERMAL_FLASH_EVENTS_PER_FRAME)
+			return;
+		frameCaps.thermalFlashEvents++;
+
+		for (int dy = -radius; dy <= radius; dy++)
+		{
+			for (int dx = -radius; dx <= radius; dx++)
+			{
+				int dist2 = dx * dx + dy * dy;
+				if (!dist2 || dist2 > radius * radius)
+					continue;
+				int nx = x + dx;
+				int ny = y + dy;
+				if (!InBounds(nx, ny))
+					continue;
+
+				int target = sim->pmap[ny][nx];
+				if (!target)
+					target = sim->photons[ny][nx];
+				if (!target)
+					continue;
+				int targetType = TYP(target);
+				if (IsRadiationTransparent(targetType))
+					continue;
+
+				bool blocked = false;
+				for (int step = 1; step <= THERMAL_FLASH_LINE_OF_SIGHT_STEPS; step++)
+				{
+					float t = float(step) / float(THERMAL_FLASH_LINE_OF_SIGHT_STEPS + 1);
+					int sx = x + int(std::round(float(dx) * t));
+					int sy = y + int(std::round(float(dy) * t));
+					if (!InBounds(sx, sy))
+						break;
+					int blocker = sim->pmap[sy][sx];
+					if (!blocker)
+						continue;
+					if (ID(blocker) == ID(target))
+						break;
+					if (!IsRadiationTransparent(TYP(blocker)))
+					{
+						blocked = true;
+						break;
+					}
+				}
+				if (blocked)
+					continue;
+
+				float distance = std::sqrt(float(dist2));
+				float falloff = 1.0f / (1.0f + distance * THERMAL_FLASH_DISTANCE_FALLOFF);
+				float heat = std::min(intensity * falloff * THERMAL_FLASH_SURFACE_BONUS, THERMAL_FLASH_MAX_HEAT);
+				sim->parts[ID(target)].temp = restrict_flt(sim->parts[ID(target)].temp + heat, MIN_TEMP, MAX_TEMP);
+			}
+		}
+	}
+
 	void ApplyFISSChainKick(Simulation *sim, int x, int y)
 	{
 		for (int dy = -FISSION_CHAIN_KICK_RADIUS; dy <= FISSION_CHAIN_KICK_RADIUS; dy++)
@@ -305,8 +509,27 @@ namespace FissStage1
 		parts[i].tmp = 0;
 		parts[i].tmp2 = 0;
 
-		AddHeatInRadius(sim, x, y, FISSION_HEAT_RADIUS, FISSION_HEAT_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_HEAT_FROM_FISS);
-		AddPressureInRadius(sim, x, y, FISSION_PRESSURE_RADIUS, FISSION_PRESSURE_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_PRESSURE_FROM_FISS);
+		ApplyThermalFlash(sim, x, y, THERMAL_FLASH_RADIUS, THERMAL_FLASH_INTENSITY);
+
+		if (Chance10000(sim, FISSION_HRAY_CHANCE))
+		{
+			int count = sim->rng.between(FISSION_HRAY_MIN, FISSION_HRAY_MAX);
+			for (int h = 0; h < count; h++)
+			{
+				if (!TryCreateHRAY(sim, x, y, FISSION_HRAY_RADIUS))
+					break;
+			}
+		}
+
+		if (Chance10000(sim, FISSION_XRAY_CHANCE))
+		{
+			int count = sim->rng.between(FISSION_XRAY_MIN, FISSION_XRAY_MAX);
+			for (int r = 0; r < count; r++)
+			{
+				if (!TryCreateXRAY(sim, x, y, FISSION_XRAY_RADIUS))
+					break;
+			}
+		}
 
 		int nCount = sim->rng.between(FISSION_NEUTRON_MIN, FISSION_NEUTRON_MAX);
 		for (int n = 0; n < nCount; n++)
@@ -314,6 +537,28 @@ namespace FissStage1
 			if (!TryCreateNTRN(sim, x, y, FISS_NEUTRON_EMISSION_RADIUS + 1))
 				break;
 		}
+
+		if (Chance10000(sim, FISSION_RADS_CHANCE))
+		{
+			int count = sim->rng.between(FISSION_RADS_MIN, FISSION_RADS_MAX);
+			for (int r = 0; r < count; r++)
+			{
+				if (!TryCreateRADS(sim, x, y, FISS_NEUTRON_EMISSION_RADIUS + 1))
+					break;
+			}
+		}
+
+		if (Chance10000(sim, FISSION_IONZ_CHANCE))
+		{
+			for (int z = 0; z < FISSION_IONZ_RADIUS; z++)
+			{
+				if (!TryCreateIONZ(sim, x, y, FISSION_IONZ_RADIUS))
+					break;
+			}
+		}
+
+		AddHeatInRadius(sim, x, y, FISSION_HEAT_RADIUS, FISSION_HEAT_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_HEAT_FROM_FISS);
+		AddPressureInRadius(sim, x, y, FISSION_PRESSURE_RADIUS, FISSION_PRESSURE_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_PRESSURE_FROM_FISS);
 
 		if (Chance10000(sim, FISSION_SHOK_CHANCE))
 		{

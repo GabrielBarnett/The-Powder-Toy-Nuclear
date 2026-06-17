@@ -108,6 +108,77 @@ namespace FissStage1
 	constexpr int PDRV_SHOK_COUNT = 2;
 	constexpr int PDRV_LIFE = 16;
 
+	constexpr bool THERMAL_FLASH_ENABLED = true;
+	constexpr int THERMAL_FLASH_RADIUS = 20;
+	constexpr float THERMAL_FLASH_INTENSITY = 360.0f;
+	constexpr float THERMAL_FLASH_SURFACE_BONUS = 1.65f;
+	constexpr float THERMAL_FLASH_DISTANCE_FALLOFF = 0.055f;
+	constexpr float THERMAL_FLASH_MAX_HEAT = 720.0f;
+	constexpr int THERMAL_FLASH_LINE_OF_SIGHT_STEPS = 24;
+	constexpr int MAX_THERMAL_FLASH_EVENTS_PER_FRAME = 80;
+
+	constexpr int HRAY_LIFE_MIN = 5;
+	constexpr int HRAY_LIFE_MAX = 11;
+	constexpr int HRAY_SPEED_MIN = 8;
+	constexpr int HRAY_SPEED_MAX = 15;
+	constexpr float HRAY_HEAT_DEPOSIT = 260.0f;
+	constexpr float HRAY_SURFACE_HEAT_MULTIPLIER = 1.40f;
+	constexpr int HRAY_ABSORPTION_CHANCE = 7200;
+	constexpr int HRAY_PENETRATION_CHANCE = 1800;
+	constexpr int HRAY_IONZ_CHANCE = 900;
+	constexpr int MAX_HRAY_CREATED_PER_FRAME = 520;
+
+	constexpr int XRAY_LIFE_MIN = 8;
+	constexpr int XRAY_LIFE_MAX = 16;
+	constexpr int XRAY_SPEED_MIN = 9;
+	constexpr int XRAY_SPEED_MAX = 17;
+	constexpr float XRAY_HEAT_DEPOSIT = 95.0f;
+	constexpr int XRAY_IONZ_CHANCE = 1500;
+	constexpr int XRAY_ABSORPTION_CHANCE = 4200;
+	constexpr int XRAY_PENETRATION_CHANCE = 4200;
+	constexpr int XRAY_FISS_ACTIVATION_BONUS = 4;
+	constexpr int MAX_XRAY_CREATED_PER_FRAME = 420;
+
+	constexpr float RADS_START_TEMP = 980.0f + 273.15f;
+	constexpr int RADS_START_LIFE = 520;
+	constexpr float RADS_COOLING_RATE = 1.8f;
+	constexpr int RADS_XRAY_EMISSION_CHANCE = 18;
+	constexpr int RADS_NTRN_EMISSION_CHANCE = 2;
+	constexpr int RADS_IONZ_CHANCE = 35;
+	constexpr int RADS_DECAY_TIME = 1;
+	constexpr int MAX_RADS_CREATED_PER_FRAME = 220;
+	constexpr int MAX_RADS_EMISSIONS_PER_FRAME = 140;
+
+	constexpr float IONZ_START_TEMP = 420.0f + 273.15f;
+	constexpr int IONZ_LIFE = 22;
+	constexpr float IONZ_COOLING_RATE = 8.0f;
+	constexpr int IONZ_FADE_RATE = 1;
+	constexpr float IONZ_PLASMA_TEMP_THRESHOLD = 2200.0f + 273.15f;
+	constexpr int MAX_IONZ_CREATED_PER_FRAME = 700;
+
+	constexpr int RMTR_SAMPLE_RADIUS = 7;
+	constexpr int RMTR_DECAY_RATE = 6;
+	constexpr int RMTR_MAX_SIGNAL = 255;
+
+	constexpr int FISSION_HRAY_CHANCE = 8500;
+	constexpr int FISSION_HRAY_MIN = 8;
+	constexpr int FISSION_HRAY_MAX = 22;
+	constexpr int FISSION_HRAY_RADIUS = 3;
+	constexpr int FISSION_XRAY_CHANCE = 6200;
+	constexpr int FISSION_XRAY_MIN = 4;
+	constexpr int FISSION_XRAY_MAX = 14;
+	constexpr int FISSION_XRAY_RADIUS = 4;
+	constexpr int FISSION_RADS_CHANCE = 5000;
+	constexpr int FISSION_RADS_MIN = 1;
+	constexpr int FISSION_RADS_MAX = 5;
+	constexpr int FISSION_IONZ_CHANCE = 6500;
+	constexpr int FISSION_IONZ_RADIUS = 5;
+
+	constexpr int FPRD_XRAY_EMISSION_CHANCE = 14;
+	constexpr int FPRD_RADS_DECAY_CHANCE = 1800;
+	constexpr int FPRD_TO_RADS_CHANCE = 2400;
+	constexpr int FPRD_TO_ASH_TIME = 1;
+
 	struct FrameStats
 	{
 		uint64_t frame = 0;
@@ -128,6 +199,12 @@ namespace FissStage1
 	void AddHeatInRadius(Simulation *sim, int x, int y, int radius, float amount, float cap);
 	bool TryCreateNTRN(Simulation *sim, int x, int y, int radius);
 	bool TryCreateSHOK(Simulation *sim, int x, int y, int radius);
+	bool TryCreateHRAY(Simulation *sim, int x, int y, int radius);
+	bool TryCreateXRAY(Simulation *sim, int x, int y, int radius);
+	bool TryCreateRADS(Simulation *sim, int x, int y, int radius);
+	bool TryCreateIONZ(Simulation *sim, int x, int y, int radius);
+	bool TryUseRadsEmissionSlot(Simulation *sim);
+	void ApplyThermalFlash(Simulation *sim, int x, int y, int radius, float intensity);
 	void ApplyFISSChainKick(Simulation *sim, int x, int y);
 	void TryEmitCompressionNeutrons(Simulation *sim, int i, int x, int y, Parts &parts);
 	bool PerformFissionEvent(Simulation *sim, int i, int x, int y, Parts &parts);
