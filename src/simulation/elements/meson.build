@@ -195,6 +195,18 @@ simulation_elem_names = [
 	'RSSS',
 	'BASE',
 	'SEED',
+	'FISS',
+	'NTRN',
+	'FPRD',
+	'CMTR',
+	'HEXP',
+	'SHOK',
+	'DENS',
+	'BEXP',
+	'SEXP',
+	'PABS',
+	'PWAL',
+	'PDRV',
 ]
 
 simulation_elem_src = []
