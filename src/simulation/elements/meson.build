@@ -219,6 +219,7 @@ simulation_elem_names = [
 	'RWAL',
 	'HSINK',
 	'PDMP',
+	'CFIS',
 ]
 
 simulation_elem_src = []

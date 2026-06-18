@@ -28,7 +28,7 @@ void Element::Element_SEXP()
 	Hardness = 2;
 	Weight = 100;
 	HeatConduct = 88;
-	Description = "Fictional slow pressure explosive. Lower peak compression over a longer pulse.";
+	Description = "Fictional slow pressure explosive. Modest BEXP-like push spread over a short pulse.";
 	Properties = TYPE_SOLID | PROP_NEUTPENETRATE | PROP_LIFE_DEC;
 
 	LowPressure = IPL;
@@ -73,6 +73,7 @@ static int update(UPDATE_FUNC_ARGS)
 		parts[i].life = FissStage1::SEXP_DURATION;
 	}
 
+	// SEXP is only a fictional pressure driver; FISS/CFIS owns the high-energy event.
 	FissStage1::AddPressureInRadius(sim, x, y, FissStage1::SEXP_RADIUS, FissStage1::SEXP_PRESSURE, FissStage1::SEXP_PRESSURE_CAP);
 	FissStage1::AddHeatInRadius(sim, x, y, FissStage1::SEXP_RADIUS * CELL, FissStage1::SEXP_HEAT, FissStage1::SEXP_HEAT);
 	if (parts[i].life % 4 == 0)

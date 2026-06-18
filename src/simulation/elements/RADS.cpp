@@ -50,16 +50,17 @@ void Element::Element_RADS()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	parts[i].temp = restrict_flt(parts[i].temp - FissStage1::RADS_COOLING_RATE, MIN_TEMP, MAX_TEMP);
+	if (parts[i].temp > FissStage1::RADS_AMBIENT_TARGET_TEMP)
+		parts[i].temp = std::max(parts[i].temp - FissStage1::RADS_COOLING_RATE, FissStage1::RADS_AMBIENT_TARGET_TEMP);
+	if (parts[i].temp < FissStage1::RADS_MIN_TEMP)
+		parts[i].temp = FissStage1::RADS_MIN_TEMP;
 	if (sim->rng.chance(FissStage1::RADS_XRAY_EMISSION_CHANCE, 10000) && FissStage1::TryUseRadsEmissionSlot(sim))
 		FissStage1::TryCreateXRAY(sim, x, y, 1);
 	if (sim->rng.chance(FissStage1::RADS_NTRN_EMISSION_CHANCE, 10000) && FissStage1::TryUseRadsEmissionSlot(sim))
 		FissStage1::TryCreateNTRN(sim, x, y, 1);
-	if (sim->rng.chance(FissStage1::RADS_IONZ_CHANCE, 10000) && FissStage1::TryUseRadsEmissionSlot(sim))
-		FissStage1::TryCreateIONZ(sim, x, y, 1);
 	if (parts[i].life <= FissStage1::RADS_DECAY_TIME)
 	{
-		sim->part_change_type(i, x, y, PT_BRCK);
+		sim->part_change_type(i, x, y, FissStage1::RADS_FINAL_DECAY_ELEMENT);
 		parts[i].temp = restrict_flt(R_TEMP + 273.15f, MIN_TEMP, MAX_TEMP);
 		return 1;
 	}

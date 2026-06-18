@@ -10,7 +10,7 @@ void Element::Element_IONZ()
 	Identifier = "DEFAULT_PT_IONZ";
 	Name = "IONZ";
 	Colour = 0x6FE7FF_rgb;
-	MenuVisible = 1;
+	MenuVisible = 0;
 	MenuSection = SC_NUCLEAR;
 	Enabled = 1;
 
@@ -31,7 +31,7 @@ void Element::Element_IONZ()
 	Weight = 1;
 	DefaultProperties.temp = FissStage1::IONZ_START_TEMP;
 	HeatConduct = 20;
-	Description = "Fictional excited gas glow from radiant energy effects.";
+	Description = "Temporarily disabled compatibility particle for older saves.";
 	Properties = TYPE_GAS | PROP_LIFE_DEC | PROP_LIFE_KILL_DEC;
 
 	LowPressure = IPL;
@@ -40,8 +40,8 @@ void Element::Element_IONZ()
 	HighPressureTransition = NT;
 	LowTemperature = ITL;
 	LowTemperatureTransition = NT;
-	HighTemperature = FissStage1::IONZ_PLASMA_TEMP_THRESHOLD;
-	HighTemperatureTransition = PT_PLSM;
+	HighTemperature = ITH;
+	HighTemperatureTransition = NT;
 
 	Update = &update;
 	Graphics = &graphics;
@@ -50,7 +50,8 @@ void Element::Element_IONZ()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	parts[i].temp = restrict_flt(parts[i].temp - FissStage1::IONZ_COOLING_RATE, MIN_TEMP, MAX_TEMP);
+	if (parts[i].temp > R_TEMP + 273.15f)
+		parts[i].temp = restrict_flt(parts[i].temp - FissStage1::IONZ_COOLING_RATE, R_TEMP + 273.15f, MAX_TEMP);
 	parts[i].tmp = std::max(parts[i].tmp - FissStage1::IONZ_FADE_RATE, 0);
 	return 0;
 }

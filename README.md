@@ -67,6 +67,18 @@ Stages:
 * Stage 2 adds fictional pressure tools and controls: `BEXP`, `SEXP`, `PABS`, `PWAL`, and `PDRV`.
 * Stage 3 adds fictional radiant-energy and aftermath effects: `HRAY`, `XRAY`, `RADS`, `IONZ`, and `RMTR`.
 * Stage 4 adds fictional control materials: `NABS`, `NSLW`, `NDIFF`, `RABS`, `RWAL`, `HSINK`, and `PDMP`.
+* Stage 5 adds `CFIS`, a fictional compressed FISS phase for coherent cluster fission, and rebalances `SEXP`.
+
+Stage 5 compressed FISS phase:
+
+* `CFIS` is a temporary fictional solid phase formed from compressed `FISS` clusters.
+* `CFIS` is not a real material phase, isotope state, or engineering model.
+* By default, supported `FISS` clusters begin forming `CFIS` around 15 in-game pressure or enough stored compression.
+* `CFIS` holds together, resists pressure scatter, synchronises nearby countdowns for roughly 90 to 120 frames, releases capped XRAY warning effects after a short arming period, releases HRAY during the final late-warning window, and then uses the existing capped fictional FISS reaction.
+* Weak or unsupported compression can revert `CFIS` back into `FISS` without producing fission outputs.
+* `SEXP` is now tuned as a modest pressure driver broadly comparable to `BEXP`; it should not be the main high-energy event.
+* `IONZ` is temporarily disabled from active gameplay and hidden from the menu, but remains defined for save compatibility.
+* `RADS` now cools toward ambient/minimum temperature instead of self-cooling into freezing temperatures.
 
 Stage 4 controls:
 
@@ -78,7 +90,9 @@ Stage 4 controls:
 * `HSINK` pulls bounded heat from nearby particles and stores it as temperature.
 * `PDMP` reduces positive pressure spikes without creating pressure.
 
-Important tuning groups live in `src/simulation/elements/FISS.h`: fission thresholds, particle lifetimes, pressure and heat caps, Stage 3 radiation caps, and Stage 4 control-material constants. Per-frame caps limit `NTRN`, `SHOK`, `HRAY`, `XRAY`, `RADS`, `IONZ`, thermal flash events, and `RADS` emissions.
+Important tuning groups live in `src/simulation/elements/FISS.h`: fission thresholds, particle lifetimes, pressure and heat caps, Stage 3 radiation caps, Stage 4 control-material constants, Stage 5 `CFIS` formation/countdown/sync/reversion constants, and `BEXP` / `SEXP` pressure-driver balance. Per-frame caps limit `NTRN`, `SHOK`, `HRAY`, `XRAY`, `RADS`, thermal flash events, `RADS` emissions, and `CFIS` cluster fissions.
+
+Stage 5 tuning constants include `CFIS_FORM_PRESSURE_THRESHOLD`, `CFIS_FORM_COMPRESSION_THRESHOLD`, `CFIS_MIN_NEIGHBOURS`, `CFIS_FORM_RADIUS`, `CFIS_ARMING_DELAY`, `CFIS_COUNTDOWN_MIN`, `CFIS_COUNTDOWN_MAX`, `CFIS_DEFAULT_COUNTDOWN`, `CFIS_MIN_LIFE_BEFORE_FISSION`, `CFIS_XRAY_START_AFTER_FORMATION`, `CFIS_HRAY_START_BEFORE_FISSION`, `CFIS_REVERT_GRACE_FRAMES`, `CFIS_SYNC_RADIUS`, `CFIS_SYNC_STRENGTH`, `CFIS_MAX_SYNC_REDUCTION_PER_FRAME`, `CFIS_SYNC_MIN_COUNTDOWN`, `CFIS_COMPRESSION_DECAY`, `CFIS_ACTIVATION_DECAY`, `CFIS_HOLD_STRENGTH`, `CFIS_REVERT_TO_FISS_THRESHOLD`, `CFIS_MAX_CLUSTER_FISSIONS_PER_FRAME`, `CFIS_PREFISSION_XRAY_CHANCE`, `CFIS_PREFISSION_HRAY_CHANCE`, `CFIS_PREFISSION_MAX_EMISSIONS_PER_FRAME`, `CFIS_FORM_COOLDOWN`, `CFIS_DAMP_VELOCITY_DURING_COUNTDOWN`, `CFIS_VELOCITY_DAMPING_FACTOR`, and `CFIS_MIN_NEIGHBOURS_TO_REMAIN`.
 
 Manual Stage 4 smoke tests:
 
@@ -90,6 +104,19 @@ Manual Stage 4 smoke tests:
 * Place `HSINK` near hot `FPRD` or `RADS`; expected local cooling and sink warming.
 * Place `PDMP` near pressure tools; expected reduced positive pressure spikes.
 * Spawn many `RADS`; expected varied lifetimes, with some long-lived particles and eventual inert decay.
+
+Manual Stage 5 smoke tests:
+
+* Place loose `FISS` with no pressure; expected no reliable `CFIS` conversion.
+* Apply about 15 in-game pressure to a supported `FISS` blob; expected local `CFIS` formation.
+* Apply below-threshold pressure; expected little or no `CFIS` conversion.
+* Apply pressure to a single isolated `FISS` particle; expected neighbour requirements to prevent easy `CFIS` formation.
+* Watch newly formed `CFIS`; expected countdowns around 90 to 120 frames, with no fission before the arming delay.
+* Compress a `FISS` blob; expected nearby `CFIS` countdowns to pull together gently, emit XRAY around 10 frames after formation, emit HRAY around 20 frames before fission, and fission close in time after that warning phase.
+* Compress `FISS` with pressure tools; expected fewer stray particles fissioning far away from the cluster.
+* Apply weak or brief compression; expected some `CFIS` to revert safely to `FISS`.
+* Detonate `SEXP` alone; expected BEXP-like heat and pressure, no plasma, and no extreme temperatures.
+* Place Stage 4 controls near a `CFIS` reaction; expected `NABS`, `RABS`, `RWAL`, `PDMP`, and related controls to retain their existing effects.
 
 Controls
 ===========================================================================

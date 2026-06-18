@@ -16,10 +16,11 @@ namespace
 		int shokCreated = 0;
 		int compressedFissCount = 0;
 		int activeFissCount = 0;
+		int cfisClusterFissions = 0;
+		int cfisPrefissionEmissions = 0;
 		int hrayCreated = 0;
 		int xrayCreated = 0;
 		int radsCreated = 0;
-		int ionzCreated = 0;
 		int thermalFlashEvents = 0;
 		int radsEmissions = 0;
 	};
@@ -37,10 +38,11 @@ namespace
 			caps.shokCreated = 0;
 			caps.compressedFissCount = 0;
 			caps.activeFissCount = 0;
+			caps.cfisClusterFissions = 0;
+			caps.cfisPrefissionEmissions = 0;
 			caps.hrayCreated = 0;
 			caps.xrayCreated = 0;
 			caps.radsCreated = 0;
-			caps.ionzCreated = 0;
 			caps.thermalFlashEvents = 0;
 			caps.radsEmissions = 0;
 		}
@@ -175,6 +177,27 @@ namespace FissStage1
 				if (TYP(sim->pmap[ny][nx]) == type)
 					count++;
 				if (TYP(sim->photons[ny][nx]) == type)
+					count++;
+			}
+		}
+		return count;
+	}
+
+	int CountNearbyFissCluster(Simulation *sim, int x, int y, int radius)
+	{
+		int count = 0;
+		for (int dy = -radius; dy <= radius; dy++)
+		{
+			for (int dx = -radius; dx <= radius; dx++)
+			{
+				if (dx * dx + dy * dy > radius * radius)
+					continue;
+				int nx = x + dx;
+				int ny = y + dy;
+				if (!InBounds(nx, ny))
+					continue;
+				int type = TYP(sim->pmap[ny][nx]);
+				if (type == PT_FISS || type == PT_CFIS)
 					count++;
 			}
 		}
@@ -363,34 +386,6 @@ namespace FissStage1
 		return false;
 	}
 
-	bool TryCreateIONZ(Simulation *sim, int x, int y, int radius)
-	{
-		auto &frameCaps = CapsFor(sim);
-		if (frameCaps.ionzCreated >= MAX_IONZ_CREATED_PER_FRAME)
-			return false;
-		for (int attempt = 0; attempt < 8; attempt++)
-		{
-			int nx = x + sim->rng.between(-radius, radius);
-			int ny = y + sim->rng.between(-radius, radius);
-			if (!InBounds(nx, ny))
-				continue;
-			if (sim->pmap[ny][nx] && !IsRadiationTransparent(TYP(sim->pmap[ny][nx])))
-				continue;
-			int r = sim->create_part(-3, nx, ny, PT_IONZ);
-			if (r < 0)
-			{
-				if (sim->parts.MaxPartsReached())
-					break;
-				continue;
-			}
-			sim->parts[r].life = IONZ_LIFE;
-			sim->parts[r].temp = restrict_flt(IONZ_START_TEMP, MIN_TEMP, MAX_TEMP);
-			frameCaps.ionzCreated++;
-			return true;
-		}
-		return false;
-	}
-
 	bool TryUseRadsEmissionSlot(Simulation *sim)
 	{
 		auto &frameCaps = CapsFor(sim);
@@ -421,8 +416,6 @@ namespace FissStage1
 		Particle &absorber = sim->parts[absorberIndex];
 		absorber.temp = restrict_flt(absorber.temp + heat, MIN_TEMP, MAX_TEMP);
 		absorber.tmp = std::min(absorber.tmp + 8, 255);
-		if (absorberType == PT_RABS && absorber.temp >= RABS_OVERLOAD_TEMP && Chance10000(sim, RABS_IONZ_ON_OVERLOAD_CHANCE))
-			TryCreateIONZ(sim, int(absorber.x + 0.5f), int(absorber.y + 0.5f), 1);
 		sim->kill_part(particleIndex);
 		return true;
 	}
@@ -505,13 +498,31 @@ namespace FissStage1
 				if (!InBounds(nx, ny))
 					continue;
 				int r = sim->pmap[ny][nx];
-				if (TYP(r) != PT_FISS)
+				if (TYP(r) != PT_FISS && TYP(r) != PT_CFIS)
 					continue;
 				Particle &nearby = sim->parts[ID(r)];
 				nearby.tmp = ClampCompression(nearby.tmp + FISSION_CHAIN_KICK_COMPRESSION);
 				nearby.tmp2 = ClampActivation(nearby.tmp2 + FISSION_CHAIN_KICK_ACTIVATION);
 			}
 		}
+	}
+
+	bool TryUseCFISClusterFissionSlot(Simulation *sim)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.cfisClusterFissions >= CFIS_MAX_CLUSTER_FISSIONS_PER_FRAME)
+			return false;
+		frameCaps.cfisClusterFissions++;
+		return true;
+	}
+
+	bool TryUseCFISPrefissionEmissionSlot(Simulation *sim)
+	{
+		auto &frameCaps = CapsFor(sim);
+		if (frameCaps.cfisPrefissionEmissions >= CFIS_PREFISSION_MAX_EMISSIONS_PER_FRAME)
+			return false;
+		frameCaps.cfisPrefissionEmissions++;
+		return true;
 	}
 
 	void TryEmitCompressionNeutrons(Simulation *sim, int i, int x, int y, Parts &parts)
@@ -585,15 +596,6 @@ namespace FissStage1
 			}
 		}
 
-		if (Chance10000(sim, FISSION_IONZ_CHANCE))
-		{
-			for (int z = 0; z < FISSION_IONZ_RADIUS; z++)
-			{
-				if (!TryCreateIONZ(sim, x, y, FISSION_IONZ_RADIUS))
-					break;
-			}
-		}
-
 		AddHeatInRadius(sim, x, y, FISSION_HEAT_RADIUS, FISSION_HEAT_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_HEAT_FROM_FISS);
 		AddPressureInRadius(sim, x, y, FISSION_PRESSURE_RADIUS, FISSION_PRESSURE_BASE * FISS_ENERGY_MULTIPLIER, MAX_LOCAL_PRESSURE_FROM_FISS);
 
@@ -624,6 +626,32 @@ static int update(UPDATE_FUNC_ARGS)
 	int nearbyNTRN = CountNearbyType(sim, x, y, NTRN_INTERACTION_RADIUS, PT_NTRN);
 	parts[i].tmp2 = ClampActivation(parts[i].tmp2 + nearbyNTRN * ACTIVATION_GAIN - ACTIVATION_DECAY);
 	NoteFISSState(sim, parts[i].tmp, parts[i].tmp2);
+
+	if (parts[i].life > 0)
+		parts[i].life--;
+
+	bool canFormCFIS = parts[i].life <= 0 &&
+		(localPressure >= CFIS_FORM_PRESSURE_THRESHOLD || parts[i].tmp >= CFIS_FORM_COMPRESSION_THRESHOLD) &&
+		CountNearbyFissCluster(sim, x, y, CFIS_FORM_RADIUS) >= CFIS_MIN_NEIGHBOURS;
+	if (canFormCFIS)
+	{
+		int compression = parts[i].tmp;
+		int activation = parts[i].tmp2;
+		float temp = parts[i].temp;
+		sim->part_change_type(i, x, y, PT_CFIS);
+		parts[i].tmp = compression;
+		parts[i].tmp2 = activation;
+		parts[i].life = sim->rng.between(CFIS_COUNTDOWN_MIN, CFIS_COUNTDOWN_MAX);
+		parts[i].tmp3 = 0;
+		parts[i].tmp4 = 0;
+		parts[i].temp = restrict_flt(std::max(temp, R_TEMP + 273.15f + 45.0f), MIN_TEMP, MAX_TEMP);
+		if (CFIS_ZERO_VELOCITY_ON_FORM)
+		{
+			parts[i].vx = 0.0f;
+			parts[i].vy = 0.0f;
+		}
+		return 1;
+	}
 
 	if (parts[i].tmp >= FISS_NEUTRON_EMISSION_THRESHOLD)
 		TryEmitCompressionNeutrons(sim, i, x, y, parts);

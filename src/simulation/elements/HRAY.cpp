@@ -50,9 +50,6 @@ void Element::Element_HRAY()
 
 static int update(UPDATE_FUNC_ARGS)
 {
-	if (sim->rng.chance(FissStage1::HRAY_IONZ_CHANCE, 10000))
-		FissStage1::TryCreateIONZ(sim, x, y, 1);
-
 	for (int dy = -1; dy <= 1; dy++)
 	{
 		for (int dx = -1; dx <= 1; dx++)
