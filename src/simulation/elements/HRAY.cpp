@@ -29,7 +29,7 @@ void Element::Element_HRAY()
 	Meltable = 0;
 	Hardness = 0;
 	Weight = -1;
-	DefaultProperties.temp = FissStage1::IONZ_START_TEMP;
+	DefaultProperties.temp = restrict_flt(FissStage1::HRAY_STAGE4_TEMP, MIN_TEMP, MAX_TEMP);
 	HeatConduct = 1;
 	Description = "Fictional heat ray. Fast radiant heat effect with no pressure or neutron emission.";
 	Properties = TYPE_ENERGY | PROP_LIFE_DEC | PROP_LIFE_KILL_DEC;
@@ -67,6 +67,8 @@ static int update(UPDATE_FUNC_ARGS)
 			if (!r)
 				continue;
 			int type = TYP(r);
+			if ((type == PT_RABS || type == PT_RWAL) && FissStage1::TryAbsorbRadiantParticle(sim, i, ID(r), type, true))
+				return 1;
 			if (SimulationData::CRef().elements[type].Properties & (TYPE_GAS | TYPE_ENERGY))
 				continue;
 			if (sim->rng.chance(FissStage1::HRAY_PENETRATION_CHANCE, 10000))
@@ -97,6 +99,7 @@ static void create(ELEMENT_CREATE_FUNC_ARGS)
 	float angle = sim->rng.between(0, 359) * std::numbers::pi_v<float> / 180.0f;
 	float speed = float(sim->rng.between(FissStage1::HRAY_SPEED_MIN * 100, FissStage1::HRAY_SPEED_MAX * 100)) / 100.0f;
 	sim->parts[i].life = sim->rng.between(FissStage1::HRAY_LIFE_MIN, FissStage1::HRAY_LIFE_MAX);
+	sim->parts[i].temp = restrict_flt(FissStage1::HRAY_STAGE4_TEMP, MIN_TEMP, MAX_TEMP);
 	sim->parts[i].vx = cosf(angle) * speed;
 	sim->parts[i].vy = sinf(angle) * speed;
 }

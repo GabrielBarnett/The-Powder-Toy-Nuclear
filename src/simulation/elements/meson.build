@@ -212,6 +212,13 @@ simulation_elem_names = [
 	'RADS',
 	'IONZ',
 	'RMTR',
+	'NABS',
+	'NSLW',
+	'NDIFF',
+	'RABS',
+	'RWAL',
+	'HSINK',
+	'PDMP',
 ]
 
 simulation_elem_src = []

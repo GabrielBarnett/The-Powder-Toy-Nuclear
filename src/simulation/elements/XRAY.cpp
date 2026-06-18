@@ -67,6 +67,8 @@ static int update(UPDATE_FUNC_ARGS)
 			if (!r)
 				continue;
 			int type = TYP(r);
+			if ((type == PT_RABS || type == PT_RWAL) && FissStage1::TryAbsorbRadiantParticle(sim, i, ID(r), type, false))
+				return 1;
 			if (type == PT_FISS)
 			{
 				parts[ID(r)].tmp2 = FissStage1::ClampActivation(parts[ID(r)].tmp2 + FissStage1::XRAY_FISS_ACTIVATION_BONUS);

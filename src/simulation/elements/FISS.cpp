@@ -332,6 +332,11 @@ namespace FissStage1
 		return false;
 	}
 
+	int RandomRadsLife(Simulation *sim)
+	{
+		return sim->rng.between(RADS_LIFE_MIN, RADS_LIFE_MAX);
+	}
+
 	bool TryCreateRADS(Simulation *sim, int x, int y, int radius)
 	{
 		auto &frameCaps = CapsFor(sim);
@@ -350,7 +355,7 @@ namespace FissStage1
 					break;
 				continue;
 			}
-			sim->parts[r].life = RADS_START_LIFE;
+			sim->parts[r].life = RandomRadsLife(sim);
 			sim->parts[r].temp = restrict_flt(RADS_START_TEMP, MIN_TEMP, MAX_TEMP);
 			frameCaps.radsCreated++;
 			return true;
@@ -393,6 +398,38 @@ namespace FissStage1
 			return false;
 		frameCaps.radsEmissions++;
 		return true;
+	}
+
+	bool TryAbsorbRadiantParticle(Simulation *sim, int particleIndex, int absorberIndex, int absorberType, bool heatRay)
+	{
+		if (absorberType != PT_RABS && absorberType != PT_RWAL)
+			return false;
+		int chance = 0;
+		float heat = 0.0f;
+		if (absorberType == PT_RABS)
+		{
+			chance = heatRay ? RABS_HRAY_ABSORPTION_CHANCE : RABS_XRAY_ABSORPTION_CHANCE;
+			heat = heatRay ? RABS_HEAT_ON_HRAY_ABSORB : RABS_HEAT_ON_XRAY_ABSORB;
+		}
+		else
+		{
+			chance = heatRay ? RWAL_HRAY_ABSORPTION_CHANCE : RWAL_XRAY_ABSORPTION_CHANCE;
+			heat = RWAL_HEAT_ON_ABSORB;
+		}
+		if (!Chance10000(sim, chance))
+			return false;
+		Particle &absorber = sim->parts[absorberIndex];
+		absorber.temp = restrict_flt(absorber.temp + heat, MIN_TEMP, MAX_TEMP);
+		absorber.tmp = std::min(absorber.tmp + 8, 255);
+		if (absorberType == PT_RABS && absorber.temp >= RABS_OVERLOAD_TEMP && Chance10000(sim, RABS_IONZ_ON_OVERLOAD_CHANCE))
+			TryCreateIONZ(sim, int(absorber.x + 0.5f), int(absorber.y + 0.5f), 1);
+		sim->kill_part(particleIndex);
+		return true;
+	}
+
+	bool IsThermalFlashBlocker(int type)
+	{
+		return RWAL_THERMAL_FLASH_BLOCKING && type == PT_RWAL;
 	}
 
 	void ApplyThermalFlash(Simulation *sim, int x, int y, int radius, float intensity)
@@ -438,7 +475,7 @@ namespace FissStage1
 						continue;
 					if (ID(blocker) == ID(target))
 						break;
-					if (!IsRadiationTransparent(TYP(blocker)))
+					if (IsThermalFlashBlocker(TYP(blocker)) || !IsRadiationTransparent(TYP(blocker)))
 					{
 						blocked = true;
 						break;

@@ -5,6 +5,21 @@ static int update(UPDATE_FUNC_ARGS);
 static int graphics(GRAPHICS_FUNC_ARGS);
 static void create(ELEMENT_CREATE_FUNC_ARGS);
 
+static void HeatControl(Parts &parts, int r, float amount)
+{
+	parts[ID(r)].temp = restrict_flt(parts[ID(r)].temp + amount, MIN_TEMP, MAX_TEMP);
+}
+
+static void RandomizeVelocity(Simulation *sim, Particle &part, float multiplier)
+{
+	float speed = std::sqrt(part.vx * part.vx + part.vy * part.vy) * multiplier;
+	if (speed < 0.05f)
+		speed = 0.05f;
+	float angle = sim->rng.between(0, 359) * std::numbers::pi_v<float> / 180.0f;
+	part.vx = cosf(angle) * speed;
+	part.vy = sinf(angle) * speed;
+}
+
 void Element::Element_NTRN()
 {
 	Identifier = "DEFAULT_PT_NTRN";
@@ -65,7 +80,46 @@ static int update(UPDATE_FUNC_ARGS)
 			if (!InBounds(nx, ny))
 				continue;
 			int r = pmap[ny][nx];
-			if (TYP(r) != PT_FISS)
+			int type = TYP(r);
+			if (type == PT_NABS)
+			{
+				if (sim->rng.chance(FissStage1::NABS_ABSORPTION_CHANCE, 10000))
+				{
+					HeatControl(parts, r, FissStage1::NABS_HEAT_ON_ABSORB);
+					parts[ID(r)].tmp += FissStage1::NABS_DAMAGE_PER_ABSORB;
+					sim->kill_part(i);
+					return 1;
+				}
+				continue;
+			}
+			if (type == PT_NSLW)
+			{
+				if (sim->rng.chance(FissStage1::NSLW_SLOW_CHANCE, 10000))
+				{
+					parts[i].vx *= FissStage1::NSLW_SPEED_MULTIPLIER;
+					parts[i].vy *= FissStage1::NSLW_SPEED_MULTIPLIER;
+					parts[i].life = std::max(parts[i].life + FissStage1::NSLW_LIFE_CHANGE, 1);
+					HeatControl(parts, r, FissStage1::NSLW_HEAT_ON_INTERACTION);
+					interacted = true;
+				}
+				continue;
+			}
+			if (type == PT_NDIFF)
+			{
+				if (sim->rng.chance(FissStage1::NDIFF_ABSORPTION_CHANCE, 10000))
+				{
+					sim->kill_part(i);
+					return 1;
+				}
+				if (sim->rng.chance(FissStage1::NDIFF_SCATTER_CHANCE, 10000))
+				{
+					RandomizeVelocity(sim, parts[i], FissStage1::NDIFF_SPEED_MULTIPLIER);
+					parts[i].life = std::max(parts[i].life - FissStage1::NDIFF_LIFE_PENALTY, 1);
+					interacted = true;
+				}
+				continue;
+			}
+			if (type != PT_FISS)
 				continue;
 			Particle &fiss = parts[ID(r)];
 			fiss.tmp2 = FissStage1::ClampActivation(fiss.tmp2 + FissStage1::ACTIVATION_GAIN / 2);

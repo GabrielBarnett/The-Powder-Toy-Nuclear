@@ -52,7 +52,8 @@ static int update(UPDATE_FUNC_ARGS)
 	int xray = FissStage1::CountNearbyType(sim, x, y, FissStage1::RMTR_SAMPLE_RADIUS, PT_XRAY);
 	int rads = FissStage1::CountNearbyType(sim, x, y, FissStage1::RMTR_SAMPLE_RADIUS, PT_RADS);
 	int ionz = FissStage1::CountNearbyType(sim, x, y, FissStage1::RMTR_SAMPLE_RADIUS, PT_IONZ);
-	int mode = std::clamp(parts[i].ctype, 0, 5);
+	int ntrn = FissStage1::CountNearbyType(sim, x, y, FissStage1::RMTR_SAMPLE_RADIUS, PT_NTRN);
+	int mode = std::clamp(parts[i].ctype, 0, 6);
 	int signal = 0;
 	switch (mode)
 	{
@@ -60,12 +61,13 @@ static int update(UPDATE_FUNC_ARGS)
 	case 1: signal = xray * 34; break;
 	case 2: signal = rads * 22; break;
 	case 3: signal = ionz * 18; break;
-	case 5: signal = std::max(parts[i].life - FissStage1::RMTR_DECAY_RATE, 0); break;
-	default: signal = hray * 28 + xray * 28 + rads * 18 + ionz * 12; break;
+	case 4: signal = ntrn * 34; break;
+	case 6: signal = std::max(parts[i].life - FissStage1::RMTR_DECAY_RATE, 0); break;
+	default: signal = hray * 24 + xray * 24 + rads * 16 + ionz * 10 + ntrn * 24; break;
 	}
 	signal = std::clamp(signal, 0, FissStage1::RMTR_MAX_SIGNAL);
 	parts[i].tmp = signal;
-	parts[i].tmp2 = std::clamp(hray + xray + rads + ionz, 0, FissStage1::RMTR_MAX_SIGNAL);
+	parts[i].tmp2 = std::clamp(hray + xray + rads + ionz + ntrn, 0, FissStage1::RMTR_MAX_SIGNAL);
 	parts[i].life = std::max(parts[i].life - FissStage1::RMTR_DECAY_RATE, signal);
 	parts[i].temp = restrict_flt(R_TEMP + 273.15f + float(signal * 8), MIN_TEMP, MAX_TEMP);
 	return 0;

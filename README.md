@@ -56,6 +56,41 @@ Instructions
 
 Click on the elements with the mouse and draw in the field, like in MS Paint. The rest of the game is learning what happens next.
 
+FISS Nuclear Sandbox Mod
+===========================================================================
+
+This fork includes a fictional gameplay-only FISS system. It is not real nuclear engineering, real shielding, real neutron physics, or weapon-design guidance. All constants are arbitrary sandbox tuning values.
+
+Stages:
+
+* Stage 1 adds `FISS`, `NTRN`, `FPRD`, `CMTR`, `HEXP`, `SHOK`, and `DENS`.
+* Stage 2 adds fictional pressure tools and controls: `BEXP`, `SEXP`, `PABS`, `PWAL`, and `PDRV`.
+* Stage 3 adds fictional radiant-energy and aftermath effects: `HRAY`, `XRAY`, `RADS`, `IONZ`, and `RMTR`.
+* Stage 4 adds fictional control materials: `NABS`, `NSLW`, `NDIFF`, `RABS`, `RWAL`, `HSINK`, and `PDMP`.
+
+Stage 4 controls:
+
+* `NABS` absorbs `NTRN` and slowly degrades into inert residue.
+* `NSLW` slows `NTRN` for easier observation and tuning.
+* `NDIFF` randomises and weakens `NTRN` paths without multiplying particles.
+* `RABS` absorbs `HRAY` and `XRAY`, converting them into heat.
+* `RWAL` blocks thermal flash line-of-sight and strongly absorbs `HRAY` / `XRAY`.
+* `HSINK` pulls bounded heat from nearby particles and stores it as temperature.
+* `PDMP` reduces positive pressure spikes without creating pressure.
+
+Important tuning groups live in `src/simulation/elements/FISS.h`: fission thresholds, particle lifetimes, pressure and heat caps, Stage 3 radiation caps, and Stage 4 control-material constants. Per-frame caps limit `NTRN`, `SHOK`, `HRAY`, `XRAY`, `RADS`, `IONZ`, thermal flash events, and `RADS` emissions.
+
+Manual Stage 4 smoke tests:
+
+* Fire `NTRN` at `NABS`; expected absorption and modest absorber heat.
+* Fire `NTRN` through `NSLW`; expected reduced velocity.
+* Fire `NTRN` through `NDIFF`; expected randomized direction with no new `NTRN`.
+* Fire `HRAY` and `XRAY` at `RABS`; expected absorption and heat.
+* Put `RWAL` between a `FISS` reaction and a heat-sensitive target; expected much less thermal flash heating behind the wall.
+* Place `HSINK` near hot `FPRD` or `RADS`; expected local cooling and sink warming.
+* Place `PDMP` near pressure tools; expected reduced positive pressure spikes.
+* Spawn many `RADS`; expected varied lifetimes, with some long-lived particles and eventual inert decay.
+
 Controls
 ===========================================================================
 

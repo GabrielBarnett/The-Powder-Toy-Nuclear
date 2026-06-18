@@ -65,7 +65,7 @@ static int update(UPDATE_FUNC_ARGS)
 		if (sim->rng.chance(FissStage1::FPRD_TO_RADS_CHANCE, 10000))
 		{
 			sim->part_change_type(i, x, y, PT_RADS);
-			parts[i].life = FissStage1::RADS_START_LIFE;
+			parts[i].life = FissStage1::RandomRadsLife(sim);
 			parts[i].temp = restrict_flt(FissStage1::RADS_START_TEMP, MIN_TEMP, MAX_TEMP);
 		}
 		else

@@ -82,6 +82,6 @@ static int graphics(GRAPHICS_FUNC_ARGS)
 
 static void create(ELEMENT_CREATE_FUNC_ARGS)
 {
-	sim->parts[i].life = FissStage1::RADS_START_LIFE;
+	sim->parts[i].life = FissStage1::RandomRadsLife(sim);
 	sim->parts[i].temp = FissStage1::RADS_START_TEMP;
 }

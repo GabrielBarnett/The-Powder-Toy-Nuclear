@@ -117,8 +117,9 @@ namespace FissStage1
 	constexpr int THERMAL_FLASH_LINE_OF_SIGHT_STEPS = 24;
 	constexpr int MAX_THERMAL_FLASH_EVENTS_PER_FRAME = 80;
 
-	constexpr int HRAY_LIFE_MIN = 5;
-	constexpr int HRAY_LIFE_MAX = 11;
+	constexpr float HRAY_STAGE4_TEMP = MAX_TEMP;
+	constexpr int HRAY_LIFE_MIN = 14;
+	constexpr int HRAY_LIFE_MAX = 28;
 	constexpr int HRAY_SPEED_MIN = 8;
 	constexpr int HRAY_SPEED_MAX = 15;
 	constexpr float HRAY_HEAT_DEPOSIT = 260.0f;
@@ -140,7 +141,9 @@ namespace FissStage1
 	constexpr int MAX_XRAY_CREATED_PER_FRAME = 420;
 
 	constexpr float RADS_START_TEMP = 980.0f + 273.15f;
-	constexpr int RADS_START_LIFE = 520;
+	constexpr int RADS_LIFE_MIN = 240;
+	constexpr int RADS_LIFE_MAX = 10800;
+	constexpr int RADS_START_LIFE = RADS_LIFE_MIN;
 	constexpr float RADS_COOLING_RATE = 1.8f;
 	constexpr int RADS_XRAY_EMISSION_CHANCE = 18;
 	constexpr int RADS_NTRN_EMISSION_CHANCE = 2;
@@ -179,6 +182,45 @@ namespace FissStage1
 	constexpr int FPRD_TO_RADS_CHANCE = 2400;
 	constexpr int FPRD_TO_ASH_TIME = 1;
 
+	constexpr int NABS_ABSORPTION_CHANCE = 7600;
+	constexpr float NABS_HEAT_ON_ABSORB = 85.0f;
+	constexpr int NABS_DAMAGE_PER_ABSORB = 8;
+	constexpr int NABS_SPENT_THRESHOLD = 240;
+	constexpr int NABS_SPENT_ELEMENT = PT_BRCK;
+
+	constexpr int NSLW_SLOW_CHANCE = 7000;
+	constexpr float NSLW_SPEED_MULTIPLIER = 0.45f;
+	constexpr int NSLW_LIFE_CHANGE = -8;
+	constexpr float NSLW_HEAT_ON_INTERACTION = 18.0f;
+
+	constexpr int NDIFF_SCATTER_CHANCE = 6800;
+	constexpr float NDIFF_SPEED_MULTIPLIER = 0.78f;
+	constexpr int NDIFF_LIFE_PENALTY = 5;
+	constexpr int NDIFF_ABSORPTION_CHANCE = 850;
+
+	constexpr int RABS_XRAY_ABSORPTION_CHANCE = 7800;
+	constexpr int RABS_HRAY_ABSORPTION_CHANCE = 8200;
+	constexpr float RABS_HEAT_ON_XRAY_ABSORB = 140.0f;
+	constexpr float RABS_HEAT_ON_HRAY_ABSORB = 320.0f;
+	constexpr float RABS_OVERLOAD_TEMP = 1450.0f + 273.15f;
+	constexpr int RABS_IONZ_ON_OVERLOAD_CHANCE = 1200;
+
+	constexpr bool RWAL_THERMAL_FLASH_BLOCKING = true;
+	constexpr int RWAL_XRAY_ABSORPTION_CHANCE = 9000;
+	constexpr int RWAL_HRAY_ABSORPTION_CHANCE = 9400;
+	constexpr float RWAL_HEAT_ON_ABSORB = 230.0f;
+	constexpr float RWAL_FAILURE_TEMP = 2400.0f + 273.15f;
+
+	constexpr float HSINK_HEAT_ABSORPTION_RATE = 16.0f;
+	constexpr int HSINK_SAMPLE_RADIUS = 2;
+	constexpr float HSINK_MAX_SAFE_TEMP = 1800.0f + 273.15f;
+	constexpr float HSINK_FAILURE_TEMP = 2600.0f + 273.15f;
+
+	constexpr float PDMP_PRESSURE_DAMPING_RATE = 0.72f;
+	constexpr int PDMP_PRESSURE_SAMPLE_RADIUS = 1;
+	constexpr int PDMP_DAMAGE_PER_PRESSURE = 2;
+	constexpr int PDMP_FAILURE_THRESHOLD = 220;
+
 	struct FrameStats
 	{
 		uint64_t frame = 0;
@@ -204,6 +246,9 @@ namespace FissStage1
 	bool TryCreateRADS(Simulation *sim, int x, int y, int radius);
 	bool TryCreateIONZ(Simulation *sim, int x, int y, int radius);
 	bool TryUseRadsEmissionSlot(Simulation *sim);
+	bool TryAbsorbRadiantParticle(Simulation *sim, int particleIndex, int absorberIndex, int absorberType, bool heatRay);
+	bool IsThermalFlashBlocker(int type);
+	int RandomRadsLife(Simulation *sim);
 	void ApplyThermalFlash(Simulation *sim, int x, int y, int radius, float intensity);
 	void ApplyFISSChainKick(Simulation *sim, int x, int y);
 	void TryEmitCompressionNeutrons(Simulation *sim, int i, int x, int y, Parts &parts);
